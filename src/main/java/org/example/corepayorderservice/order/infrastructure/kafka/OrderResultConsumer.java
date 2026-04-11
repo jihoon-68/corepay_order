@@ -1,11 +1,16 @@
 package org.example.corepayorderservice.order.infrastructure.kafka;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.corepayorderservice.order.application.OrderService;
+import org.example.corepayorderservice.order.application.command.CancelOrderCommand;
+import org.example.corepayorderservice.order.application.command.CompleteOrderCommand;
+import org.example.corepayorderservice.order.application.command.RefundOrderCommand;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentFailedEvent;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCancelEvent;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCompletedEvent;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -17,41 +22,41 @@ public class OrderResultConsumer {
     private final ObjectMapper objectMapper;
     private final OrderService orderService;
 
-    // [보상 트랜잭션] 실패(취소) 이벤트 수신
-    @KafkaListener(topics = "order-cancel-topic", groupId = "order-group")
+    // [보상 트랜잭션] 실패 이벤트 수신
+    @KafkaListener(topics = "payment-failed-topic", groupId = "order-group")
     public void consumeOrderCancel(String message) {
         try {
-            JsonNode jsonNode = objectMapper.readTree(message);
-            Long orderId = jsonNode.get("orderId").asLong();
-            String reason = jsonNode.has("reason") ? jsonNode.get("reason").asText() : "UNKNOWN_ERROR";
+            PaymentFailedEvent event = objectMapper.readValue(message, PaymentFailedEvent.class);
+            CancelOrderCommand command = CancelOrderCommand.builder()
+                    .id(event.orderId())
+                    .reason(event.reason())
+                    .build();
 
-            orderService.cancelOrder(orderId, reason);
+            orderService.cancelOrder(command);
         } catch (JsonProcessingException e) {
             log.error("보상 트랜잭션 메시지 파싱 에러", e);
         }
     }
 
     // [결제 완료] 최종 성공 이벤트 수신
-    @KafkaListener(topics = "order-completed-topic", groupId = "order-group")
+    @KafkaListener(topics = "payment-completed-topic", groupId = "order-group")
     public void consumeOrderComplete(String message) {
         try {
-            JsonNode jsonNode = objectMapper.readTree(message);
-            Long orderId = jsonNode.get("orderId").asLong();
-
-            orderService.completeOrder(orderId);
+            PaymentCompletedEvent event = objectMapper.readValue(message, PaymentCompletedEvent.class);
+            CompleteOrderCommand command = CompleteOrderCommand.builder().id(event.orderId()).build();
+            orderService.completeOrder(command);
         } catch (JsonProcessingException e) {
             log.error("성공 메시지 파싱 에러", e);
         }
     }
 
-    // [환불 완료] 환불 이벤트 수신
-    @KafkaListener(topics = "order-refunded-topic", groupId = "order-group")
+    // [환불 완료] 환불(취소) 이벤트 수신
+    @KafkaListener(topics = "payment-cancel-topic", groupId = "order-group")
     public void consumeOrderRefund(String message) {
         try {
-            JsonNode jsonNode = objectMapper.readTree(message);
-            Long orderId = jsonNode.get("orderId").asLong();
-
-            orderService.refundOrder(orderId);
+            PaymentCancelEvent event = objectMapper.readValue(message, PaymentCancelEvent.class);
+            RefundOrderCommand command = RefundOrderCommand.builder().id(event.orderId()).build();
+            orderService.refundOrder(command);
         } catch (JsonProcessingException e) {
             log.error("환불 메시지 파싱 에러", e);
         }
