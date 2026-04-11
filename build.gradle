@@ -25,7 +25,7 @@ repositories {
 dependencies {
 // 1. 기본
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'org.springframework.boot:spring-boot-starter-aop:3.2.4'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
     implementation 'io.github.openfeign:feign-hc5'
     implementation 'io.github.resilience4j:resilience4j-spring-boot3'
@@ -66,6 +66,7 @@ dependencies {
     // 7. Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+    runtimeOnly 'com.h2database:h2'
 }
 
 dependencyManagement {
