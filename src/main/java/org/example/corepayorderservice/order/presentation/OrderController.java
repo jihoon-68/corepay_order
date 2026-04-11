@@ -1,6 +1,8 @@
 package org.example.corepayorderservice.order.presentation;
 
 import lombok.RequiredArgsConstructor;
+import org.example.corepayorderservice.order.application.command.CreatedOrderCommand;
+import org.example.corepayorderservice.order.application.command.UpdateStateOrderCommand;
 import org.example.corepayorderservice.order.presentation.dto.OrderCreatReq;
 import org.example.corepayorderservice.order.presentation.dto.OrderUpdateStateReq;
 import org.example.corepayorderservice.order.application.OrderService;
@@ -21,7 +23,12 @@ public class OrderController {
     // 💡 프론트엔드에서 결제창 띄우기 직전에 호출하는 아주 중요한 API!
     @PostMapping
     public ResponseEntity<OrderDto> createOrder(@RequestBody OrderCreatReq req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.creat(req));
+        CreatedOrderCommand command = CreatedOrderCommand.builder()
+                .userId(req.userId())
+                .productId(req.productId())
+                .amount(req.amount())
+                .build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.creat(command));
     }
 
     @GetMapping("/{id}")
@@ -37,7 +44,12 @@ public class OrderController {
     @PatchMapping("/{id}/state")
     public ResponseEntity<Void> updateOrderState(@RequestBody OrderUpdateStateReq req) {
         // req 객체에 id가 이미 포함되어 있다면 서비스 레이어 파라미터를 살짝 맞춰주면 돼!
-        orderService.updateState(req);
+        UpdateStateOrderCommand command = UpdateStateOrderCommand.builder()
+                .id(req.id())
+                .state(req.state())
+                .build();
+
+        orderService.updateState(command);
         return ResponseEntity.ok().build();
     }
 
