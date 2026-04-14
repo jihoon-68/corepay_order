@@ -1,8 +1,8 @@
 CREATE TABLE product_snapshot
 (
-    id         BIGINT       NOT NULL,
+    product_id BIGINT       NOT NULL,
     name       VARCHAR(255) NULL,
     price      INT          NOT NULL,
     discount   INT          NOT NULL,
-    CONSTRAINT pk_product_snapshot PRIMARY KEY (id)
+    CONSTRAINT pk_product_snapshot PRIMARY KEY (product_id)
 );
