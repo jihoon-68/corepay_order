@@ -4,11 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.corepayorderservice.order.application.command.*;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderCreatedEvent;
-import org.example.corepayorderservice.order.presentation.dto.OrderUpdateStateReq;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.StockIncreaseEvent;
 import org.example.corepayorderservice.order.presentation.dto.OrderDto;
 import org.example.corepayorderservice.order.infrastructure.db.OrderRepository;
 import org.example.corepayorderservice.order.domain.Order;
-import org.example.corepayorderservice.order.infrastructure.kafka.OrderEventProducer;
 import org.example.corepayorderservice.product.application.ProductSnapshotService;
 import org.example.corepayorderservice.product.presentation.ProductSnapshotDto;
 import org.springframework.context.ApplicationEventPublisher;
@@ -68,6 +67,16 @@ public class BasicOrderService implements OrderService {
 
         order.cancel();
         log.error(" [주문 취소 완료] 주문 ID: {}, 사유: {}", command.id(),command.reason());
+
+        // 재품 재고 복구 이벤트 발행
+        StockIncreaseEvent event = StockIncreaseEvent.builder()
+                .orderId(order.getId())
+                .productId(order.getProductId())
+                .amount(order.getAmount())
+                .build();
+
+        publisher.publishEvent(event);
+
         orderRepository.save(order);
     }
 
@@ -90,6 +99,14 @@ public class BasicOrderService implements OrderService {
 
         order.refund();
         log.info(" [환불 완료] 주문 ID: {}의 상태가 REFUNDED로 변경되었습니다.", command.id());
+
+        StockIncreaseEvent event = StockIncreaseEvent.builder()
+                .productId(order.getProductId())
+                .amount(order.getAmount())
+                .build();
+
+        publisher.publishEvent(event);
+
         orderRepository.save(order);
     }
 
