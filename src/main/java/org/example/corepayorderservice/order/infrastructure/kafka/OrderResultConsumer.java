@@ -11,6 +11,7 @@ import org.example.corepayorderservice.order.application.command.RefundOrderComm
 import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentFailedEvent;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCancelEvent;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCompletedEvent;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentRefundEvent;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +25,7 @@ public class OrderResultConsumer {
 
     // [보상 트랜잭션] 실패 이벤트 수신
     @KafkaListener(topics = "payment-failed-topic", groupId = "order-group")
-    public void consumeOrderCancel(String message) {
+    public void consumePaymentFailed(String message) {
         try {
             PaymentFailedEvent event = objectMapper.readValue(message, PaymentFailedEvent.class);
             CancelOrderCommand command = CancelOrderCommand.builder()
@@ -40,7 +41,7 @@ public class OrderResultConsumer {
 
     // [결제 완료] 최종 성공 이벤트 수신
     @KafkaListener(topics = "payment-completed-topic", groupId = "order-group")
-    public void consumeOrderComplete(String message) {
+    public void consumePaymentComplete(String message) {
         try {
             PaymentCompletedEvent event = objectMapper.readValue(message, PaymentCompletedEvent.class);
             CompleteOrderCommand command = CompleteOrderCommand.builder().id(event.orderId()).build();
@@ -51,12 +52,24 @@ public class OrderResultConsumer {
     }
 
     // [환불 완료] 환불(취소) 이벤트 수신
-    @KafkaListener(topics = "payment-cancel-topic", groupId = "order-group")
-    public void consumeOrderRefund(String message) {
+    @KafkaListener(topics = "payment-refund-topic", groupId = "order-group")
+    public void consumePaymentRefund(String message) {
         try {
-            PaymentCancelEvent event = objectMapper.readValue(message, PaymentCancelEvent.class);
+            PaymentRefundEvent event = objectMapper.readValue(message, PaymentRefundEvent.class);
             RefundOrderCommand command = RefundOrderCommand.builder().id(event.orderId()).build();
             orderService.refundOrder(command);
+        } catch (JsonProcessingException e) {
+            log.error("환불 메시지 파싱 에러", e);
+        }
+    }
+
+    // [환불 완료] 재품 -> 오더 취소 이벤트 수신
+    @KafkaListener(topics = "order-cancel-topic", groupId = "order-group")
+    public void consumeOrderFailed(String message) {
+        try {
+            PaymentCancelEvent event = objectMapper.readValue(message, PaymentCancelEvent.class);
+            CancelOrderCommand command = CancelOrderCommand.builder().id(event.orderId()).build();
+            orderService.cancelOrder(command);
         } catch (JsonProcessingException e) {
             log.error("환불 메시지 파싱 에러", e);
         }

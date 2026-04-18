@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderCreatedEvent;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCancelEvent;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.StockIncreaseEvent;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -26,6 +27,12 @@ public class OrderEventProducer {
         log.info("재고 복구 이벤트 발행: {}", event);
         sendMessage("stock-increase-topic", event);
     }
+
+    public void sendPaymentCancel(PaymentCancelEvent event){
+        log.info("재고 취소 이벤트 발행: {}", event);
+        sendMessage("payment-cancel-topic", event);
+    }
+
 
     private void sendMessage(String topic, Object event) {
         try {

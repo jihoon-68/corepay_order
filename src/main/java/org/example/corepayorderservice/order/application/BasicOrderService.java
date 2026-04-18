@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.corepayorderservice.order.application.command.*;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderCreatedEvent;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCancelEvent;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.StockIncreaseEvent;
 import org.example.corepayorderservice.order.presentation.dto.OrderDto;
 import org.example.corepayorderservice.order.infrastructure.db.OrderRepository;
@@ -68,13 +69,21 @@ public class BasicOrderService implements OrderService {
         order.cancel();
         log.error(" [주문 취소 완료] 주문 ID: {}, 사유: {}", command.id(),command.reason());
 
-        // 재품 재고 복구 이벤트 발행
-        StockIncreaseEvent event = StockIncreaseEvent.builder()
-                .orderId(order.getId())
-                .productId(order.getProductId())
-                .amount(order.getAmount())
-                .build();
+        if(command.reason().isNeedStockRestore()){
+            // 재품 재고 복구 이벤트 발행
+            StockIncreaseEvent event = StockIncreaseEvent.builder()
+                    .orderId(order.getId())
+                    .productId(order.getProductId())
+                    .amount(order.getAmount())
+                    .build();
 
+            publisher.publishEvent(event);
+        }
+        // 어떤 사유든 주문이 취소되면 결제 서버도 상태를 정리해야 하므로 결제 취소 이벤트 발행
+        PaymentCancelEvent event = PaymentCancelEvent.builder()
+                .orderId(order.getId())
+                .reason(command.reason())
+                .build();
         publisher.publishEvent(event);
 
         orderRepository.save(order);
@@ -99,13 +108,6 @@ public class BasicOrderService implements OrderService {
 
         order.refund();
         log.info(" [환불 완료] 주문 ID: {}의 상태가 REFUNDED로 변경되었습니다.", command.id());
-
-        StockIncreaseEvent event = StockIncreaseEvent.builder()
-                .productId(order.getProductId())
-                .amount(order.getAmount())
-                .build();
-
-        publisher.publishEvent(event);
 
         orderRepository.save(order);
     }
