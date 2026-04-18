@@ -1,6 +1,7 @@
 package org.example.corepayorderservice.order;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.example.corepayorderservice.order.application.CancelReason;
 import org.example.corepayorderservice.order.domain.Order;
 import org.example.corepayorderservice.order.domain.OrderState;
 import org.example.corepayorderservice.order.infrastructure.db.OrderRepository;
@@ -87,7 +88,7 @@ public class OrderStateTransitionIntegrationTest {
         // Given: 결제 서버가 보낼 가짜 이벤트 JSON 생성
         PaymentFailedEvent event = PaymentFailedEvent.builder()
                 .orderId(orderId)
-                .reason("결제 실패")
+                .reason(CancelReason.PAYMENT_FAILED)
                 .build();
 
         String message = objectMapper.writeValueAsString(event);
@@ -111,7 +112,7 @@ public class OrderStateTransitionIntegrationTest {
         String message = objectMapper.writeValueAsString(event);
 
         // When: 테스트 코드가 결제 서버인 척 카프카에 완료 메시지를 발송합니다.
-        kafkaTemplate.send("payment-cancel-topic", message);
+        kafkaTemplate.send("payment-refund-topic", message);
 
         // Then: DB를 업데이트할 때까지 Awaitility로 기다리며 검증합니다.
         await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
