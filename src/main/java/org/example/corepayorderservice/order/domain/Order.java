@@ -11,6 +11,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "orders")
@@ -26,17 +28,14 @@ public class Order {
     private Long userId;
 
     @Column(nullable = false)
-    private Long productId;
-
-    @Column(nullable = false)
     private Integer orderPrice;
-
-    @Column(nullable = false)
-    private Integer amount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderState state;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final List<OrderLineItem> orderLineItems = new ArrayList<>();
 
     @CreatedDate
     @Column(updatable = false)
@@ -47,12 +46,20 @@ public class Order {
     private LocalDateTime updatedAt;
 
     @Builder
-    public Order(Long userId, Long productId, Integer orderPrice, Integer amount){
+    public Order(Long userId){
         this.userId = userId;
-        this.productId = productId;
-        this.orderPrice = orderPrice;
-        this.amount = amount;
+        this.orderPrice = 0;
         this.state = OrderState.READY;
+    }
+
+    public void addLineItem(OrderLineItem item) {
+        this.orderLineItems.add(item);
+        item.setOrder(this);
+    }
+
+    // 총액 업데이트 메서드
+    public void updateOrderPrice(Integer totalAmount) {
+        this.orderPrice = totalAmount;
     }
 
 
