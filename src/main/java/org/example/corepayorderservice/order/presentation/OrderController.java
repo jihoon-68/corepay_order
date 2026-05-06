@@ -23,11 +23,16 @@ public class OrderController {
     // 💡 프론트엔드에서 결제창 띄우기 직전에 호출하는 아주 중요한 API!
     @PostMapping
     public ResponseEntity<OrderDto> createOrder(@RequestBody OrderCreatReq req) {
+        // Req -> Command 변환 (List 매핑)
+        List<CreatedOrderCommand.OrderItemCommand> itemCommands = req.items().stream()
+                .map(item -> new CreatedOrderCommand.OrderItemCommand(item.productId(), item.amount()))
+                .toList();
+
         CreatedOrderCommand command = CreatedOrderCommand.builder()
                 .userId(req.userId())
-                .productId(req.productId())
-                .amount(req.amount())
+                .items(itemCommands)
                 .build();
+
         return ResponseEntity.status(HttpStatus.CREATED).body(orderService.creat(command));
     }
 

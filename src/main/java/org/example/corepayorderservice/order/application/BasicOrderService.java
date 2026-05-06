@@ -3,7 +3,9 @@ package org.example.corepayorderservice.order.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.corepayorderservice.order.application.command.*;
+import org.example.corepayorderservice.order.domain.OrderLineItem;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderCreatedEvent;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderItemDto;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCancelEvent;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.StockIncreaseEvent;
 import org.example.corepayorderservice.order.presentation.dto.OrderDto;
@@ -30,29 +32,47 @@ public class BasicOrderService implements OrderService {
     @Override
     @Transactional
     public OrderDto creat(CreatedOrderCommand command) {
-        //상품 확인 및 재고 차감
-        ProductSnapshotDto product = productSnapshotService.getProductInfo(command.productId());
-
-        //최종 결제 금액 계산
-        int discountedPrice = product.price() - (product.price() * product.discount() / 100);
-        int totalAmount = discountedPrice * command.amount();
-
-        //주문(Order) 생성 (READY)
         Order order = Order.builder()
                 .userId(command.userId())
-                .productId(command.productId())
-                .orderPrice(totalAmount)
-                .amount(command.amount())
                 .build();
+
+        int totalAmount = 0;
+
+        // 2. 다건 상품 순회 처리
+        for (CreatedOrderCommand.OrderItemCommand itemCommand : command.items()) {
+            // 스냅샷 정보 조회 (Product 서비스 데이터 복제본)
+            ProductSnapshotDto product = productSnapshotService.getProductInfo(itemCommand.productId());
+
+            // 할인가 적용 단가 계산
+            int discountedPrice = product.price() - (product.price() * product.discount() / 100);
+            int itemTotalPrice = discountedPrice * itemCommand.amount();
+            totalAmount += itemTotalPrice;
+
+            // 주문 상세 엔티티 생성 및 Order에 추가
+            OrderLineItem lineItem = OrderLineItem.builder()
+                    .productId(itemCommand.productId())
+                    .price(discountedPrice) // 단가 저장
+                    .amount(itemCommand.amount())
+                    .build();
+
+            order.addLineItem(lineItem); // 양방향 매핑 설정
+        }
+
+        // 3. 계산된 총액 세팅 후 DB 저장
+        // CascadeType.ALL 덕분에 OrderLineItem 데이터들도 한 번에 자동 INSERT 됩니다.
+        order.updateOrderPrice(totalAmount);
         orderRepository.save(order);
 
         //결제(Payment) 대기열 같이 생성 (READY)
+        List<OrderItemDto> eventItems = command.items().stream()
+                .map(item -> OrderItemDto.from(item.productId(), item.amount()))
+                .toList();
+
         OrderCreatedEvent event = OrderCreatedEvent.builder()
                 .orderId(order.getId())
                 .userId(order.getUserId())
-                .productId(order.getProductId())
                 .totalPrice(totalAmount)
-                .amount(command.amount())
+                .items(eventItems)
                 .build();
 
         publisher.publishEvent(event);
@@ -71,10 +91,13 @@ public class BasicOrderService implements OrderService {
 
         if(command.reason().isNeedStockRestore()){
             // 재품 재고 복구 이벤트 발행
+            List<OrderItemDto> eventItems = order.getOrderLineItems().stream()
+                    .map(item -> OrderItemDto.from(item.getProductId(), item.getAmount()))
+                    .toList();
+
             StockIncreaseEvent event = StockIncreaseEvent.builder()
                     .orderId(order.getId())
-                    .productId(order.getProductId())
-                    .amount(order.getAmount())
+                    .items(eventItems)
                     .build();
 
             publisher.publishEvent(event);
