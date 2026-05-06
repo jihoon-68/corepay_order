@@ -20,11 +20,11 @@ import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 
 @SpringBootTest
@@ -53,13 +53,11 @@ public class OrderIntegrationTest {
         latch = new CountDownLatch(1);
         receivedMessage = null;
 
-        // 카프카 컨슈머 준비 대기 (결제 서버에서 배운 필수 로직)
         for (MessageListenerContainer container : kafkaListenerEndpointRegistry.getListenerContainers()) {
             ContainerTestUtils.waitForAssignment(container, 1);
         }
     }
 
-    // 오더 서버가 발행한 이벤트를 검증하기 위한 가짜 컨슈머
     @KafkaListener(topics = "order-created-topic", groupId = "test-order-group")
     public void listen(String message) {
         this.receivedMessage = message;
@@ -67,26 +65,36 @@ public class OrderIntegrationTest {
     }
 
     @Test
-    @DisplayName("주문 생성 시 상품 정보를 조회하고, DB 저장 후 카프카 이벤트를 발행한다.")
-    void createOrder_Success() throws Exception {
-        // Given: 상품 정보 모킹
-        ProductSnapshotDto product = new ProductSnapshotDto(1L, "테스트 상품", 10000, 10); // 10% 할인
-        given(productSnapshotService.getProductInfo(anyLong())).willReturn(product);
+    @DisplayName("다건 주문 생성 시 상품들의 총액을 올바르게 누적 계산하고, DB 저장 후 카프카 이벤트를 발행한다.")
+    void createMultipleOrder_Success() throws Exception {
+        // Given: 2개의 상품 정보 모킹
+        // 상품1: 10,000원 -> 10% 할인 -> 9,000원
+        ProductSnapshotDto product1 = new ProductSnapshotDto(1L, "테스트 상품1", 10000, 10);
+        // 상품2: 20,000원 -> 20% 할인 -> 16,000원
+        ProductSnapshotDto product2 = new ProductSnapshotDto(2L, "테스트 상품2", 20000, 20);
 
-        CreatedOrderCommand command = new CreatedOrderCommand(1L, 1L, 2); // 유저1, 상품1, 수량2
+        given(productSnapshotService.getProductInfo(1L)).willReturn(product1);
+        given(productSnapshotService.getProductInfo(2L)).willReturn(product2);
 
-        // When: 주문 생성
+        // 상품1을 2개, 상품2를 1개 주문 (9000*2 + 16000*1 = 34000원)
+        List<CreatedOrderCommand.OrderItemCommand> items = List.of(
+                new CreatedOrderCommand.OrderItemCommand(1L, 2),
+                new CreatedOrderCommand.OrderItemCommand(2L, 1)
+        );
+        CreatedOrderCommand command = new CreatedOrderCommand(1L, items);
+
+        // When: 다건 주문 생성
         orderService.creat(command);
 
-        // Then 1: 카프카 이벤트 발행 검증 (비동기 대기)
+        // Then 1: 카프카 이벤트 발행 검증
         boolean messageReceived = latch.await(5, TimeUnit.SECONDS);
 
         assertThat(messageReceived).isTrue();
-        assertThat(receivedMessage).contains("\"totalPrice\":18000"); // (10000 - 1000) * 2
+        assertThat(receivedMessage).contains("\"totalPrice\":34000"); // 총액 검증
 
         // Then 2: DB 저장 상태 검증
         Order savedOrder = orderRepository.findAll().get(0);
-        assertThat(savedOrder.getOrderPrice()).isEqualTo(18000);
+        assertThat(savedOrder.getOrderPrice()).isEqualTo(34000);
         assertThat(savedOrder.getState()).isEqualTo(OrderState.READY);
     }
 }
