@@ -7,7 +7,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderCreatedEvent;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCancelEvent;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.StockIncreaseEvent;
+import org.slf4j.MDC;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -36,9 +40,22 @@ public class OrderEventProducer {
 
     private void sendMessage(String topic, Object event) {
         try {
-            String message = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send(topic, message);
-            log.info("[카프카 발송 성공] 토픽: {}, 메시지: {}", topic, message);
+            String messagePayload = objectMapper.writeValueAsString(event);
+
+            // 현재 스레드의 MDC에서 Trace ID 꺼내기
+            String traceId = MDC.get("traceId");
+
+            // MessageBuilder를 사용하여 페이로드(JSON)와 카프카 헤더(Trace ID)를 함께 포장
+            Message<String> kafkaMessage = MessageBuilder
+                    .withPayload(messagePayload)
+                    .setHeader(KafkaHeaders.TOPIC, topic)
+                    .setHeader("X-Trace-Id", traceId != null ? traceId : "UNKNOWN-TRACE") // 🛡️ 헤더 주입!
+                    .build();
+
+            // 4. 포장된 메시지 전송
+            kafkaTemplate.send(kafkaMessage);
+            log.info("[카프카 발송 성공] 토픽: {}, TraceID: {}, 메시지: {}", topic, traceId, messagePayload);
+
         } catch (JsonProcessingException e) {
             log.error("카프카 메시지 직렬화 에러. 토픽: {}", topic, e);
         }

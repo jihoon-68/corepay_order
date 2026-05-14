@@ -22,33 +22,43 @@ public class OrderController {
 
     // 💡 프론트엔드에서 결제창 띄우기 직전에 호출하는 아주 중요한 API!
     @PostMapping
-    public ResponseEntity<OrderDto> createOrder(@RequestBody OrderCreatReq req) {
+    public ResponseEntity<OrderDto> createOrder(
+            @RequestHeader("X-User-Id") Long userId, // 🛡️ 1. 게이트웨이가 인증한 100% 신뢰할 수 있는 유저 ID
+            @RequestBody OrderCreatReq req) {
+
         // Req -> Command 변환 (List 매핑)
         List<CreatedOrderCommand.OrderItemCommand> itemCommands = req.items().stream()
                 .map(item -> new CreatedOrderCommand.OrderItemCommand(item.productId(), item.amount()))
                 .toList();
 
         CreatedOrderCommand command = CreatedOrderCommand.builder()
-                .userId(req.userId())
+                .userId(userId) // 🛡️ 2. 클라이언트가 보낸 req.userId()가 아니라, 안전한 헤더의 userId를 주입!
                 .items(itemCommands)
                 .build();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(orderService.creat(command));
     }
 
+    // 💡 단건 조회도 내 주문인지 확인하려면 userId가 필요할 수 있습니다.
     @GetMapping("/{id}")
-    public ResponseEntity<OrderDto> getOrder(@PathVariable Long id) {
+    public ResponseEntity<OrderDto> getOrder(
+            @RequestHeader("X-User-Id") Long userId,
+            @PathVariable Long id) {
+        // (필요 시) 서비스 레이어에서 이 주문이 해당 userId의 주문이 맞는지 검증하는 로직 추가
         return ResponseEntity.ok(orderService.get(id));
     }
 
+    // 💡 전체 목록이 아니라 "내 주문 목록"만 가져오도록 헤더를 받습니다.
     @GetMapping
-    public ResponseEntity<List<OrderDto>> getOrderList() {
+    public ResponseEntity<List<OrderDto>> getOrderList(
+            @RequestHeader("X-User-Id") Long userId) {
+        // 서비스 레이어의 메서드도 getList(userId) 처럼 변경해서 내 것만 조회하도록 하면 완벽합니다.
         return ResponseEntity.ok(orderService.getList());
     }
 
     @PatchMapping("/{id}/state")
     public ResponseEntity<Void> updateOrderState(@RequestBody OrderUpdateStateReq req) {
-        // req 객체에 id가 이미 포함되어 있다면 서비스 레이어 파라미터를 살짝 맞춰주면 돼!
+        // 상태 변경은 보통 결제 서버(Payment) 콜백이나 관리자가 호출하므로 로직 유지
         UpdateStateOrderCommand command = UpdateStateOrderCommand.builder()
                 .id(req.id())
                 .state(req.state())
@@ -63,5 +73,4 @@ public class OrderController {
         orderService.delete(id);
         return ResponseEntity.noContent().build();
     }
-
 }
