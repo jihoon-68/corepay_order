@@ -49,7 +49,7 @@ public class OrderEventProducer {
             Message<String> kafkaMessage = MessageBuilder
                     .withPayload(messagePayload)
                     .setHeader(KafkaHeaders.TOPIC, topic)
-                    .setHeader("X-Trace-Id", traceId != null ? traceId : "UNKNOWN-TRACE") // 🛡️ 헤더 주입!
+                    .setHeader("X-Trace-Id", traceId != null ? traceId : "UNKNOWN-TRACE")
                     .build();
 
             // 4. 포장된 메시지 전송

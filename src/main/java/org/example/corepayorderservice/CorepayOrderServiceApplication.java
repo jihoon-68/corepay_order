@@ -5,9 +5,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
-@SpringBootApplication
 @EnableJpaAuditing
 @EnableFeignClients
+@SpringBootApplication(scanBasePackages = {
+        "org.example.corepayorderservice",
+        "org.example.corepaycommon"
+})
 public class CorepayOrderServiceApplication {
 
     public static void main(String[] args) {

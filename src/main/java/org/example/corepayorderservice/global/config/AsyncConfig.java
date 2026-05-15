@@ -1,5 +1,6 @@
 package org.example.corepayorderservice.global.config;
 
+import org.example.corepaycommon.log.MdcTaskDecorator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;

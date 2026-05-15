@@ -4,13 +4,15 @@ server:
 
 # 스프링
 spring:
+  config:
+    import: "optional:file:.env[.properties]"
   application:
     name: order
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/corepay_order_db
-    username: user
-    password: user1234
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   jpa:
     hibernate:

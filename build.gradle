@@ -19,6 +19,7 @@ ext {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
@@ -30,6 +31,9 @@ dependencies {
     implementation 'io.github.openfeign:feign-hc5'
     implementation 'io.github.resilience4j:resilience4j-spring-boot3'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // 공통 로직 라이브러리
+    implementation 'org.example:corepay-common:1.0.0'
 
     // 2. Data & JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -58,6 +62,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
     // 6. Actuator & Prometheus
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
