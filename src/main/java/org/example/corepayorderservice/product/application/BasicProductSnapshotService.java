@@ -12,6 +12,11 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 
 @Service
 @Slf4j
@@ -23,25 +28,33 @@ public class BasicProductSnapshotService implements ProductSnapshotService{
     private final ObjectMapper objectMapper;
 
     @Override
-    public ProductSnapshotDto getProductInfo(Long productId) {
-        String key = "product:snapshot:" + productId;
+    @Transactional
+    public Map<Long, ProductSnapshotDto> getProductInfos(List<Long> productIds) {
+        Map<Long, ProductSnapshotDto> result = new HashMap<>();
+        List<Long> cacheMiss = new ArrayList<>();
 
-        // 1. Redis 찔러보기 (한정판/타임세일 등 Hot Data)
-        String redisData = redisTemplate.opsForValue().get(key);
-        if (redisData != null) {
-            try {
-                log.info("상품 ID: {}", productId);
-                return objectMapper.readValue(redisData, ProductSnapshotDto.class);
-            } catch (JsonProcessingException e) {
-                log.error("Redis 데이터 파싱 에러", e);
-                // 파싱 실패 시 조용히 아래 DB 조회 로직으로 넘어가게(Fallback) 둡니다.
+        // 1. Redis 일괄 조회
+        for (Long id : productIds) {
+            String key = "product:snapshot:" + id;
+            String redisData = redisTemplate.opsForValue().get(key);
+            if (redisData != null) {
+                try {
+                    result.put(id, objectMapper.readValue(redisData, ProductSnapshotDto.class));
+                } catch (JsonProcessingException e) {
+                    cacheMiss.add(id);
+                }
+            } else {
+                cacheMiss.add(id);
             }
         }
 
-        // 2. Redis에 없으면? (평상시) 주문 서버의 내장 DB에서 조회
-        log.info("상품 ID: {}", productId);
-        return snapshotRepository.findByProductId(productId)
-                .orElseThrow(() -> new RuntimeException("상품 정보가 존재하지 않거나 판매 중지되었습니다."));
+        // 2. Redis 미스만 DB에서 IN 쿼리로 1번에 조회
+        if (!cacheMiss.isEmpty()) {
+            snapshotRepository.findAllByProductIdIn(cacheMiss)
+                    .forEach(s -> result.put(s.getProductId(), ProductSnapshotDto.from(s)));
+        }
+
+        return result;
     }
 
     @Override
