@@ -13,14 +13,19 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
-
+    hikari:
+      maximum-pool-size: 20     # 10 → 30
+      minimum-idle: 10          # 항상 10개 유지
+      connection-timeout: 3000  # 3초 대기 후 실패
+      idle-timeout: 600000      # 10분
+      max-lifetime: 1800000     # 30분
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
   cloud:
     openfeign:
       httpclient:
@@ -43,7 +48,9 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: "1"
+      retries: 3
     properties:
       spring:
         json:
@@ -59,9 +66,10 @@ spring:
       port: 6379
       lettuce:
         pool:
-          max-active: 16
-          max-idle: 16
-          min-idle: 0
+          max-active: 30
+          max-idle: 30
+          min-idle: 15
+        shutdown-timeout: 100ms
 
 
   threads:
@@ -85,7 +93,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: prometheus, health, info, metrics # 프로메테우스가 접근할 수 있도록 엔드포인트 개방
+        include: prometheus, health, info, metrics,threaddump, heapdump # 프로메테우스가 접근할 수 있도록 엔드포인트 개방
   metrics:
     tags:
       application: ${spring.application.name} # 그라파나 대시보드에서 서버 필터링할 때 사용
