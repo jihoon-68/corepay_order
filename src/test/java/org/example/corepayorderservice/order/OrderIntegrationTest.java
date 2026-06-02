@@ -20,7 +20,10 @@ import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -67,14 +70,20 @@ public class OrderIntegrationTest {
     @Test
     @DisplayName("다건 주문 생성 시 상품들의 총액을 올바르게 누적 계산하고, DB 저장 후 카프카 이벤트를 발행한다.")
     void createMultipleOrder_Success() throws Exception {
+        Map<Long, ProductSnapshotDto> result1 = new HashMap<>();
+        Map<Long, ProductSnapshotDto> result2 = new HashMap<>();
+
         // Given: 2개의 상품 정보 모킹
         // 상품1: 10,000원 -> 10% 할인 -> 9,000원
         ProductSnapshotDto product1 = new ProductSnapshotDto(1L, "테스트 상품1", 10000, 10);
+        result1.put(product1.id(),product1);
         // 상품2: 20,000원 -> 20% 할인 -> 16,000원
         ProductSnapshotDto product2 = new ProductSnapshotDto(2L, "테스트 상품2", 20000, 20);
+        result2.put(product2.id(),product2);
 
-        given(productSnapshotService.getProductInfo(1L)).willReturn(product1);
-        given(productSnapshotService.getProductInfo(2L)).willReturn(product2);
+
+        given(productSnapshotService.getProductInfos(Collections.singletonList(1L))).willReturn(result1);
+        given(productSnapshotService.getProductInfos(Collections.singletonList(2L))).willReturn(result2);
 
         // 상품1을 2개, 상품2를 1개 주문 (9000*2 + 16000*1 = 34000원)
         List<CreatedOrderCommand.OrderItemCommand> items = List.of(
