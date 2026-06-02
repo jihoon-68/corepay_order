@@ -50,8 +50,8 @@ public class BasicProductSnapshotService implements ProductSnapshotService{
 
         // 2. Redis 미스만 DB에서 IN 쿼리로 1번에 조회
         if (!cacheMiss.isEmpty()) {
-            snapshotRepository.findAllByProductIdIn(cacheMiss)
-                    .forEach(s -> result.put(s.getProductId(), ProductSnapshotDto.from(s)));
+            snapshotRepository.findAllByIdIn(cacheMiss)
+                    .forEach(s -> result.put(s.getId(), ProductSnapshotDto.from(s)));
         }
 
         return result;
@@ -62,7 +62,7 @@ public class BasicProductSnapshotService implements ProductSnapshotService{
     public void productSnapshotSave(ProductCreatedEvent event) {
         ProductSnapshot snapshot = snapshotRepository.findById(event.productId())
                 .orElseGet(() -> ProductSnapshot.builder()
-                        .productId(event.productId())
+                        .id(event.productId())
                         .name(event.name())
                         .price(event.price())
                         .discount(event.discount())

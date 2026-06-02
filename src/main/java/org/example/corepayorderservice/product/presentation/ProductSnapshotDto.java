@@ -3,7 +3,7 @@ package org.example.corepayorderservice.product.presentation;
 import org.example.corepayorderservice.product.domain.ProductSnapshot;
 
 public record ProductSnapshotDto(
-        Long productId,
+        Long id,
         String name,
         int price,
         int discount
@@ -11,7 +11,7 @@ public record ProductSnapshotDto(
 
     public static ProductSnapshotDto from(ProductSnapshot entity) {
         return new ProductSnapshotDto(
-                entity.getProductId(),
+                entity.getId(),
                 entity.getName(),
                 entity.getPrice(),
                 entity.getDiscount()
