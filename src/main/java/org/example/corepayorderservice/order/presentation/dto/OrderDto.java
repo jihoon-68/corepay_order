@@ -13,7 +13,7 @@ public record OrderDto(
         Long id,
         Long userId,
         Integer orderPrice,
-        OrderState state,
+        String state,
         List<OrderItemDto> items,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -27,7 +27,7 @@ public record OrderDto(
                 .id(order.getId())
                 .userId(order.getUserId())
                 .orderPrice(order.getOrderPrice())
-                .state(order.getState())
+                .state(order.getState().name())
                 .items(eventItems)
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())

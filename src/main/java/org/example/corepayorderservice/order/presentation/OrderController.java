@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.corepayorderservice.order.application.command.CreatedOrderCommand;
 import org.example.corepayorderservice.order.application.command.UpdateStateOrderCommand;
 import org.example.corepayorderservice.order.presentation.dto.OrderCreatReq;
+import org.example.corepayorderservice.order.presentation.dto.OrderCreateResponse;
 import org.example.corepayorderservice.order.presentation.dto.OrderUpdateStateReq;
 import org.example.corepayorderservice.order.application.OrderService;
 import org.example.corepayorderservice.order.presentation.dto.OrderDto;
@@ -22,7 +23,7 @@ public class OrderController {
 
     // 💡 프론트엔드에서 결제창 띄우기 직전에 호출하는 아주 중요한 API!
     @PostMapping
-    public ResponseEntity<OrderDto> createOrder(
+    public ResponseEntity<OrderCreateResponse> createOrder(
             @RequestHeader("X-User-Id") Long userId, // 🛡️ 1. 게이트웨이가 인증한 100% 신뢰할 수 있는 유저 ID
             @RequestBody OrderCreatReq req) {
 
@@ -36,7 +37,7 @@ public class OrderController {
                 .items(itemCommands)
                 .build();
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.creat(command));
+        return ResponseEntity.ok(orderService.creat(command));
     }
 
     // 💡 단건 조회도 내 주문인지 확인하려면 userId가 필요할 수 있습니다.
