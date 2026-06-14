@@ -3,10 +3,9 @@ package org.example.corepayorderservice.order.application.event;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.corepayorderservice.order.infrastructure.kafka.OrderEventProducer;
-import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderCreatedEvent;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderCancelledEvent;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCancelEvent;
-import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCompletedEvent;
-import org.example.corepayorderservice.order.infrastructure.kafka.event.StockIncreaseEvent;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.StockConfirmEvent;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -19,26 +18,27 @@ public class OrderEventHandler {
 
     private final OrderEventProducer producer;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    // 결제 성공 → DB 재고 확정 Kafka 발행
     @Async
-    public void orderCreatedEvent(OrderCreatedEvent event){
-        log.info("========[오더 생성 이벤트 수신 받음]========");
-        producer.sendOrderCreated(event);
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleStockConfirm(StockConfirmEvent event) {
+        log.info("[이벤트 수신] StockConfirmEvent orderId={}", event.orderId());
+        producer.sendStockConfirm(event);
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    // 결제 실패 → Redis 재고 복구 Kafka 발행
     @Async
-    public void stockIncreaseEvent(StockIncreaseEvent event){
-        log.info("========[재고 복구 이벤트 수신 받음]========");
-
-        producer.sendStockIncrease(event);
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleOrderCancelled(OrderCancelledEvent event) {
+        log.info("[이벤트 수신] OrderCancelledEvent orderId={}", event.orderId());
+        producer.sendOrderCancelled(event);
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    // 사용자 취소 → 결제 취소 Kafka 발행
     @Async
-    public void stockIncreaseEvent(PaymentCancelEvent event){
-        log.info("========[결재 취소 이벤트 수신 받음]========");
-
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handlePaymentCancel(PaymentCancelEvent event) {
+        log.info("[이벤트 수신] PaymentCancelEvent orderId={}", event.orderId());
         producer.sendPaymentCancel(event);
     }
 

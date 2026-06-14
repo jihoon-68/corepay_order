@@ -4,19 +4,14 @@ import lombok.Getter;
 
 @Getter
 public enum CancelReason {
+    OUT_OF_STOCK,
 
-    OUT_OF_STOCK(false),
+    PRODUCT_NOT_FOUND,
 
-    PRODUCT_NOT_FOUND(false),
+    CUSTOMER_CANCEL,
 
-    CUSTOMER_CANCEL(true),
+    PAYMENT_FAILED,
 
-    PAYMENT_FAILED(true);
+    RESERVATION_EXPIRED;
 
-
-    private final boolean needStockRestore;
-
-    CancelReason(boolean needStockRestore) {
-        this.needStockRestore = needStockRestore;
-    }
 }
