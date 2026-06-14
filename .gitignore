@@ -7,7 +7,7 @@ build/
 !**/src/test/**/build/
 logs/
 .env
-test/
+k6test/
 ### STS ###
 .apt_generated
 .classpath
