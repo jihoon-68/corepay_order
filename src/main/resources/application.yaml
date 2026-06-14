@@ -2,6 +2,12 @@
 server:
   port: 8082
 
+services:
+  product:
+    url: localhost:8083
+  payment:
+    url: localhost:8084
+
 # 스프링
 spring:
   config:
@@ -14,15 +20,15 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     hikari:
-      maximum-pool-size: 20     # 10 → 30
-      minimum-idle: 10          # 항상 10개 유지
-      connection-timeout: 3000  # 3초 대기 후 실패
-      idle-timeout: 600000      # 10분
-      max-lifetime: 1800000     # 30분
+      maximum-pool-size: 40
+      minimum-idle: 10
+      connection-timeout: 3000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: false
@@ -64,12 +70,6 @@ spring:
     redis:
       host: localhost
       port: 6379
-      lettuce:
-        pool:
-          max-active: 30
-          max-idle: 30
-          min-idle: 15
-        shutdown-timeout: 100ms
 
 
   threads:
