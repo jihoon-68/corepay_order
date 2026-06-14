@@ -4,9 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderCreatedEvent;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderCancelledEvent;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCancelEvent;
-import org.example.corepayorderservice.order.infrastructure.kafka.event.StockIncreaseEvent;
+import org.example.corepayorderservice.order.infrastructure.kafka.event.StockConfirmEvent;
 import org.slf4j.MDC;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -22,19 +22,21 @@ public class OrderEventProducer {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
-    public void sendOrderCreated(OrderCreatedEvent event){
-        log.info("주문 이벤트 발행: {}", event);
-        sendMessage("order-created-topic", event);
-    }
-
-    public void sendStockIncrease(StockIncreaseEvent event){
-        log.info("재고 복구 이벤트 발행: {}", event);
-        sendMessage("stock-increase-topic", event);
-    }
-
     public void sendPaymentCancel(PaymentCancelEvent event){
-        log.info("재고 취소 이벤트 발행: {}", event);
+        log.info("결제 취소 이벤트 발행: {}", event);
         sendMessage("payment-cancel-topic", event);
+    }
+
+    // ★ 신규: 결제 성공 → DB 재고 확정
+    public void sendStockConfirm(StockConfirmEvent event) {
+        log.info("재고 확정 이벤트 발행: {}", event);
+        sendMessage("stock-confirm-topic", event);
+    }
+
+    // ★ 신규: 결제 실패 → Redis 재고 복구
+    public void sendOrderCancelled(OrderCancelledEvent event) {
+        log.info("주문 취소(재고 복구) 이벤트 발행: {}", event);
+        sendMessage("order-cancelled-topic", event);
     }
 
 

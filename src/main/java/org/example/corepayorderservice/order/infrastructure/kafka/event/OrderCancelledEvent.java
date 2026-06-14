@@ -5,8 +5,7 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-public record StockConfirmEvent(
+public record OrderCancelledEvent (
         Long orderId,
         List<OrderItemDto> items
-) {
-}
+){ }
