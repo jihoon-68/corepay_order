@@ -1,7 +1,6 @@
 package org.example.corepayorderservice.order.domain;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -49,7 +48,7 @@ public class Order {
     public Order(Long userId){
         this.userId = userId;
         this.orderPrice = 0;
-        this.state = OrderState.READY;
+        this.state = OrderState.PENDING_STOCK;
     }
 
     public void addLineItem(OrderLineItem item) {
@@ -62,16 +61,59 @@ public class Order {
         this.orderPrice = totalAmount;
     }
 
-
-    public void cancel() {
-        this.state = OrderState.CANCELED;
+    // 재고 선점 성공 (Product 서버 Kafka 응답)
+    public void reserveStock() {
+        validateState(OrderState.PENDING_STOCK);
+        this.state = OrderState.STOCK_RESERVED;
     }
 
-    public void complete() {
+    // 재고 선점 실패
+    public void failStock() {
+        validateState(OrderState.PENDING_STOCK);
+        this.state = OrderState.STOCK_FAILED;
+    }
+
+    // 결제 요청
+    public void requestPayment() {
+        validateState(OrderState.STOCK_RESERVED);
+        this.state = OrderState.PAYMENT_REQUESTED;
+    }
+
+    // 결제 성공
+    public void completePayment() {
+        validateState(OrderState.PAYMENT_REQUESTED);
         this.state = OrderState.COMPLETED;
     }
 
+    // 결제 실패
+    public void failPayment() {
+        validateState(OrderState.PAYMENT_REQUESTED);
+        this.state = OrderState.CANCELLED;
+    }
+
+    // 취소 (사용자 직접 취소 등)
+    public void cancel() {
+        this.state = OrderState.CANCELLED;
+    }
+
+    // 환불
     public void refund() {
+        validateState(OrderState.COMPLETED);
         this.state = OrderState.REFUNDED;
+    }
+
+    // 만료 (스케줄러)
+    public void expire() {
+        validateState(OrderState.STOCK_RESERVED);
+        this.state = OrderState.EXPIRED;
+    }
+
+
+    private void validateState(OrderState required) {
+        if (this.state != required) {
+            throw new IllegalStateException(
+                    String.format("잘못된 상태 전이: 현재=%s, 필요=%s", this.state, required)
+            );
+        }
     }
 }

@@ -1,6 +1,9 @@
 package org.example.corepayorderservice.order.domain;
 
 
+import lombok.Getter;
+
+@Getter
 public enum OrderState {
     PENDING_STOCK,
     STOCK_RESERVED,
