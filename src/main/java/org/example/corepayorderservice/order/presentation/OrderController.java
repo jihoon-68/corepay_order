@@ -1,13 +1,12 @@
 package org.example.corepayorderservice.order.presentation;
 
 import lombok.RequiredArgsConstructor;
+import org.example.corepayorderservice.order.application.CancelReason;
+import org.example.corepayorderservice.order.application.command.CancelOrderCommand;
 import org.example.corepayorderservice.order.application.command.CreatedOrderCommand;
 import org.example.corepayorderservice.order.application.command.UpdateStateOrderCommand;
-import org.example.corepayorderservice.order.presentation.dto.OrderCreatReq;
-import org.example.corepayorderservice.order.presentation.dto.OrderCreateResponse;
-import org.example.corepayorderservice.order.presentation.dto.OrderUpdateStateReq;
+import org.example.corepayorderservice.order.presentation.dto.*;
 import org.example.corepayorderservice.order.application.OrderService;
-import org.example.corepayorderservice.order.presentation.dto.OrderDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,6 +37,17 @@ public class OrderController {
                 .build();
 
         return ResponseEntity.ok(orderService.creat(command));
+    }
+    @PatchMapping("/cancel")
+    public ResponseEntity<Void> cancelOrder(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestBody OrderCancelReq req){
+        CancelOrderCommand command = CancelOrderCommand.builder().
+                id(req.id()).
+                userId(userId).
+                reason(CancelReason.valueOf(req.reason()))
+                .build();
+        return ResponseEntity.ok().build();
     }
 
     // 💡 단건 조회도 내 주문인지 확인하려면 userId가 필요할 수 있습니다.

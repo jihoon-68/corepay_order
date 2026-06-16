@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Table(name = "orders")
@@ -54,6 +55,10 @@ public class Order {
     public void addLineItem(OrderLineItem item) {
         this.orderLineItems.add(item);
         item.setOrder(this);
+    }
+
+    public Boolean isSameUser(Long userId){
+        return Objects.equals(this.userId, userId);
     }
 
     // 총액 업데이트 메서드

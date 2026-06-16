@@ -75,6 +75,9 @@ public class BasicOrderService implements OrderService {
     @Transactional
     public void cancelOrder(CancelOrderCommand command) {
         Order order = findOrderById(command.id());
+        if(!order.isSameUser(command.userId())){
+            throw new RuntimeException("해당 주문의 사용자가 일치 하지 않습니다.");
+        }
         order.cancel();
         log.info("[주문 취소 완료] 주문 ID: {}, 사유: {}", command.id(), command.reason());
         publishPaymentCancelEvent(order, command);
