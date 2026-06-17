@@ -12,5 +12,6 @@ public enum OrderState {
     COMPLETED,
     CANCELLED,
     REFUNDED,
+    REFUND_FAILED,
     EXPIRED
 }

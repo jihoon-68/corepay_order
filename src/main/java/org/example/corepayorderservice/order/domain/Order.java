@@ -113,6 +113,11 @@ public class Order {
         this.state = OrderState.EXPIRED;
     }
 
+    //환불 실패(DLT Consumer)
+    public void refundFailed() {
+        // 어떤 상태에서도 강제 마킹 (운영 개입 필요 상황)
+        this.state = OrderState.REFUND_FAILED;
+    }
 
     private void validateState(OrderState required) {
         if (this.state != required) {
