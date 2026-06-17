@@ -13,6 +13,7 @@ import org.example.corepayorderservice.order.infrastructure.kafka.event.OrderCan
 import org.example.corepayorderservice.order.infrastructure.kafka.event.PaymentCancelEvent;
 import org.example.corepayorderservice.order.infrastructure.kafka.event.StockConfirmEvent;
 import org.example.corepayorderservice.order.presentation.dto.OrderCreateResponse;
+import org.example.corepayorderservice.order.presentation.dto.OrderDto;
 import org.example.corepayorderservice.order.presentation.dto.PaymentResultDto;
 import org.example.corepayorderservice.product.application.ProductSnapshotService;
 import org.example.corepayorderservice.product.presentation.ProductSnapshotDto;
@@ -25,6 +26,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -92,7 +94,7 @@ class BasicOrderServiceTest {
                     .willReturn(new StockReserveResponse(true, List.of()));
 
             // when
-            OrderCreateResponse response = orderService.creat(command);
+            OrderCreateResponse response = orderService.create(command);
 
             // then
             assertThat(response.status()).isEqualTo("STOCK_RESERVED");
@@ -113,7 +115,7 @@ class BasicOrderServiceTest {
                     .willReturn(new StockReserveResponse(false, List.of(1L)));
 
             // when
-            OrderCreateResponse response = orderService.creat(command);
+            OrderCreateResponse response = orderService.create(command);
 
             // then
             assertThat(response.status()).isEqualTo("STOCK_FAILED");
@@ -134,7 +136,7 @@ class BasicOrderServiceTest {
                     .willThrow(mock(FeignException.class));
 
             // when & then
-            assertThatThrownBy(() -> orderService.creat(command))
+            assertThatThrownBy(() -> orderService.create(command))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("재고 서버와 통신 중 오류");
         }
@@ -155,7 +157,7 @@ class BasicOrderServiceTest {
             ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
 
             // when
-            orderService.creat(command);
+            orderService.create(command);
 
             // then
             verify(orderRepository).save(captor.capture());
@@ -325,19 +327,27 @@ class BasicOrderServiceTest {
         }
 
         @Test
-        @DisplayName("전체 주문 목록 조회")
+        @DisplayName("전체 주문 목록 페이징 조회")
         void getList_success() {
             // given
-            given(orderRepository.findAll()).willReturn(List.of(
+            Pageable pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+
+            List<Order> orders = List.of(
                     makeOrder(1L, OrderState.COMPLETED),
                     makeOrder(2L, OrderState.CANCELLED)
-            ));
+            );
+            Page<Order> orderPage = new PageImpl<>(orders, pageable, orders.size());
+
+            given(orderRepository.findAll(pageable)).willReturn(orderPage);
 
             // when
-            var result = orderService.getList();
+            Page<OrderDto> result = orderService.getList(pageable);
 
             // then
-            assertThat(result).hasSize(2);
+            assertThat(result.getContent()).hasSize(2);
+            assertThat(result.getTotalElements()).isEqualTo(2);
+            assertThat(result.getContent().get(0).state()).isEqualTo(OrderState.COMPLETED.toString());
+            assertThat(result.getContent().get(1).state()).isEqualTo(OrderState.CANCELLED.toString());
         }
     }
 }
