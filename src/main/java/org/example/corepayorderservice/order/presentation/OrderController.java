@@ -7,7 +7,10 @@ import org.example.corepayorderservice.order.application.command.CreatedOrderCom
 import org.example.corepayorderservice.order.application.command.UpdateStateOrderCommand;
 import org.example.corepayorderservice.order.presentation.dto.*;
 import org.example.corepayorderservice.order.application.OrderService;
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,7 +39,7 @@ public class OrderController {
                 .items(itemCommands)
                 .build();
 
-        return ResponseEntity.ok(orderService.creat(command));
+        return ResponseEntity.ok(orderService.create(command));
     }
     @PatchMapping("/cancel")
     public ResponseEntity<Void> cancelOrder(
@@ -61,10 +64,13 @@ public class OrderController {
 
     // 💡 전체 목록이 아니라 "내 주문 목록"만 가져오도록 헤더를 받습니다.
     @GetMapping
-    public ResponseEntity<List<OrderDto>> getOrderList(
-            @RequestHeader("X-User-Id") Long userId) {
+    public ResponseEntity<Page<OrderDto>> getOrderList(
+            @RequestHeader("X-User-Id") Long userId,
+            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
         // 서비스 레이어의 메서드도 getList(userId) 처럼 변경해서 내 것만 조회하도록 하면 완벽합니다.
-        return ResponseEntity.ok(orderService.getList());
+        return ResponseEntity.ok(orderService.getList(pageable));
     }
 
     @PatchMapping("/{id}/state")
