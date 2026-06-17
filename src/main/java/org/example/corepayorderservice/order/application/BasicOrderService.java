@@ -20,6 +20,8 @@ import org.example.corepayorderservice.order.presentation.dto.PaymentResultDto;
 import org.example.corepayorderservice.product.application.ProductSnapshotService;
 import org.example.corepayorderservice.product.presentation.ProductSnapshotDto;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +42,7 @@ public class BasicOrderService implements OrderService {
 
     @Override
     @Transactional
-    public OrderCreateResponse creat(CreatedOrderCommand command) {
+    public OrderCreateResponse create(CreatedOrderCommand command) {
         Map<Long, ProductSnapshotDto> productMap = fetchProductMap(command);
         Order order = buildOrder(command, productMap);
         orderRepository.save(order);
@@ -74,13 +76,18 @@ public class BasicOrderService implements OrderService {
     @Override
     @Transactional
     public void cancelOrder(CancelOrderCommand command) {
-        Order order = findOrderById(command.id());
-        if(!order.isSameUser(command.userId())){
-            throw new RuntimeException("해당 주문의 사용자가 일치 하지 않습니다.");
+        try {
+            Order order = findOrderById(command.id());
+            if(!order.isSameUser(command.userId())){
+                throw new RuntimeException("해당 주문의 사용자가 일치 하지 않습니다.");
+            }
+            order.cancel();
+            log.info("[주문 취소 완료] 주문 ID: {}, 사유: {}", command.id(), command.reason());
+            publishPaymentCancelEvent(order, command);
+        } catch (IllegalStateException e) {
+            throw new RuntimeException(e);
         }
-        order.cancel();
-        log.info("[주문 취소 완료] 주문 ID: {}, 사유: {}", command.id(), command.reason());
-        publishPaymentCancelEvent(order, command);
+
     }
 
     @Override
@@ -99,10 +106,9 @@ public class BasicOrderService implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderDto> getList() {
-        return orderRepository.findAll().stream()
-                .map(OrderDto::from)
-                .collect(Collectors.toList());
+    public Page<OrderDto> getList(Pageable pageable) {
+        return orderRepository.findAll(pageable)
+                .map(OrderDto::from);
     }
 
     @Override
