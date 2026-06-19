@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.corepayorderservice.order.application.CancelReason;
 import org.example.corepayorderservice.order.application.command.CancelOrderCommand;
 import org.example.corepayorderservice.order.application.command.CreatedOrderCommand;
+import org.example.corepayorderservice.order.application.command.RequestPaymentCommand;
 import org.example.corepayorderservice.order.application.command.UpdateStateOrderCommand;
 import org.example.corepayorderservice.order.presentation.dto.*;
 import org.example.corepayorderservice.order.application.OrderService;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,6 +43,23 @@ public class OrderController {
 
         return ResponseEntity.ok(orderService.create(command));
     }
+
+    @PostMapping("/{id}/payment")
+    public ResponseEntity<PaymentResultDto> requestPayment(
+            @RequestHeader("X-User-Id") Long userId,
+            @PathVariable Long id) {
+        RequestPaymentCommand command = RequestPaymentCommand.builder().
+                OrderId(id).
+                userId(userId).
+                build();
+        PaymentResultDto result = orderService.requestPayment(command);
+
+        if (!result.success()) {
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(result);
+        }
+        return ResponseEntity.ok(result);
+    }
+
     @PatchMapping("/cancel")
     public ResponseEntity<Void> cancelOrder(
             @RequestHeader("X-User-Id") Long userId,

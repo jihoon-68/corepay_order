@@ -7,12 +7,10 @@ import org.example.corepayorderservice.order.presentation.dto.PaymentResultDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
-
 public interface OrderService {
 
     OrderCreateResponse create(CreatedOrderCommand command);
-    PaymentResultDto requestPayment(Long orderId);
+    PaymentResultDto requestPayment(RequestPaymentCommand command);
     void updateState(UpdateStateOrderCommand command);
     void cancelOrder(CancelOrderCommand command);
     void refundOrder(RefundOrderCommand command);
