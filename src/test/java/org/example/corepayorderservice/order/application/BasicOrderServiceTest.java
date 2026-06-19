@@ -70,6 +70,13 @@ class BasicOrderServiceTest {
                 .build();
     }
 
+    private RequestPaymentCommand makeRequestPaymentCommand(){
+        return RequestPaymentCommand.builder()
+                .OrderId(1L)
+                .userId(1L)
+                .build();
+    }
+
     private ProductSnapshotDto makeSnapshot(Long id, int price, int discount) {
         return new ProductSnapshotDto(id, "상품" + id, price, discount);
     }
@@ -180,8 +187,10 @@ class BasicOrderServiceTest {
             given(paymentFeignClient.pay(any()))
                     .willReturn(new PaymentResponse(true, null));
 
+
+
             // when
-            PaymentResultDto result = orderService.requestPayment(1L);
+            PaymentResultDto result = orderService.requestPayment(makeRequestPaymentCommand());
 
             // then
             assertThat(result.success()).isTrue();
@@ -203,7 +212,7 @@ class BasicOrderServiceTest {
                     .willReturn(new PaymentResponse(false, "잔액 부족"));
 
             // when
-            PaymentResultDto result = orderService.requestPayment(1L);
+            PaymentResultDto result = orderService.requestPayment(makeRequestPaymentCommand());
 
             // then
             assertThat(result.success()).isFalse();
@@ -225,7 +234,7 @@ class BasicOrderServiceTest {
                     .willThrow(mock(FeignException.GatewayTimeout.class));
 
             // when & then
-            assertThatThrownBy(() -> orderService.requestPayment(1L))
+            assertThatThrownBy(() -> orderService.requestPayment(makeRequestPaymentCommand()))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("결제 결과를 확인할 수 없습니다");
 
@@ -241,7 +250,7 @@ class BasicOrderServiceTest {
             given(orderRepository.findById(1L)).willReturn(Optional.of(order));
 
             // when & then
-            assertThatThrownBy(() -> orderService.requestPayment(1L))
+            assertThatThrownBy(() -> orderService.requestPayment(makeRequestPaymentCommand()))
                     .isInstanceOf(IllegalStateException.class);
 
             verify(paymentFeignClient, never()).pay(any());
@@ -261,7 +270,7 @@ class BasicOrderServiceTest {
             Order order = makeOrder(1L, OrderState.STOCK_RESERVED);
             given(orderRepository.findById(1L)).willReturn(Optional.of(order));
             CancelOrderCommand command = CancelOrderCommand.builder()
-                    .id(1L).reason(CancelReason.CUSTOMER_CANCEL).build();
+                    .id(1L).userId(1L).reason(CancelReason.CUSTOMER_CANCEL).build();
 
             // when
             orderService.cancelOrder(command);
