@@ -92,6 +92,7 @@ public class BasicOrderService implements OrderService {
     @Transactional
     public void refundOrder(RefundOrderCommand command) {
         Order order = findOrderById(command.id());
+        publishOrderCancelledEvent(order,true);
         order.refund();
         log.info("[환불 완료] 주문 ID: {}", command.id());
     }
@@ -215,21 +216,21 @@ public class BasicOrderService implements OrderService {
 
     private PaymentResultDto processPaymentFailed(Order order, String failReason){
         order.failPayment(); // PAYMENT_REQUESTED → CANCELLED
-        publishOrderCancelledEvent(order); // Kafka: Product Redis 재고 복구
+        publishOrderCancelledEvent(order, false); // Kafka: Product Redis 재고 복구
         log.warn("[결제 실패] orderId={}, reason={}", order.getId(), failReason);
         return PaymentResultDto.fail(order.getId(), failReason);
     }
 
-    private void publishOrderCancelledEvent(Order order) {
+    private void publishOrderCancelledEvent(Order order, boolean paymentConfirmed) {
         List<OrderItemDto> items = order.getOrderLineItems().stream()
                 .map(item -> OrderItemDto.from(item.getProductId(), item.getAmount()))
                 .toList();
-        publisher.publishEvent(
-                OrderCancelledEvent.builder()
-                        .orderId(order.getId())
-                        .items(items)
-                        .build()
-        );
+        if(paymentConfirmed){
+            publisher.publishEvent(OrderCancelledEvent.ofConfirmed(order.getId(), items));
+        }else {
+            publisher.publishEvent(OrderCancelledEvent.ofFailed(order.getId(), items));
+        }
+
     }
 
 
