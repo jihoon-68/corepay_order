@@ -72,7 +72,7 @@ class BasicOrderServiceTest {
 
     private RequestPaymentCommand makeRequestPaymentCommand(){
         return RequestPaymentCommand.builder()
-                .OrderId(1L)
+                .orderId(1L)
                 .userId(1L)
                 .build();
     }
