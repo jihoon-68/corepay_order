@@ -12,7 +12,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,14 +48,11 @@ public class OrderController {
             @RequestHeader("X-User-Id") Long userId,
             @PathVariable Long id) {
         RequestPaymentCommand command = RequestPaymentCommand.builder().
-                OrderId(id).
+                orderId(id).
                 userId(userId).
                 build();
         PaymentResultDto result = orderService.requestPayment(command);
 
-        if (!result.success()) {
-            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(result);
-        }
         return ResponseEntity.ok(result);
     }
 
