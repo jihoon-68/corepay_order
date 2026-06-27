@@ -4,7 +4,7 @@ import lombok.Builder;
 
 @Builder
 public record RequestPaymentCommand(
-        Long OrderId,
+        Long orderId,
         Long userId
 ) {
 }

@@ -51,7 +51,7 @@ public class BasicOrderService implements OrderService {
     @Override
     @Transactional
     public PaymentResultDto requestPayment(RequestPaymentCommand command) {
-        Order order = findOrderById(command.OrderId());
+        Order order = findOrderById(command.orderId());
         order.requestPayment(); // STOCK_RESERVED 검증 → PAYMENT_REQUESTED
 
         try {
@@ -66,7 +66,7 @@ public class BasicOrderService implements OrderService {
 
         } catch (FeignException e) {
             // 타임아웃: PAYMENT_REQUESTED 유지 → 스케줄러가 EXPIRED 처리
-            log.error("[결제 타임아웃] orderId={} → PAYMENT_REQUESTED 상태 유지", command.OrderId(), e);
+            log.error("[결제 타임아웃] orderId={} → PAYMENT_REQUESTED 상태 유지", command.orderId(), e);
             throw new RuntimeException("결제 결과를 확인할 수 없습니다. 잠시 후 다시 확인해주세요.", e);
         }
     }
